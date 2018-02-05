@@ -1,6 +1,4 @@
-package new_server;
-
-import new_server.ServerReactor;
+package server_new;
 
 public class RunServer {
     public static void main(String[] args) {

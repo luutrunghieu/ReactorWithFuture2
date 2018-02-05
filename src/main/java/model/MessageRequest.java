@@ -2,13 +2,13 @@ package model;
 
 import java.nio.ByteBuffer;
 
-public class MessageResponse extends Response{
+public class MessageRequest extends Request{
     private String content;
 
-    public MessageResponse(){
+    public MessageRequest(){
 
     }
-    public MessageResponse(int id, String content) {
+    public MessageRequest(int id, String content) {
         super(id);
         this.content = content;
         this.setSize(content.getBytes().length);

@@ -1,6 +1,8 @@
-package new_server;
+package server_new;
 
-import model.Message;
+import model.MessageRequest;
+import model.Request;
+import model.Response;
 
 import java.net.InetSocketAddress;
 import java.nio.channels.SelectionKey;
@@ -9,16 +11,13 @@ import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.util.Iterator;
 import java.util.Set;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.*;
 
-public class ServerReactor implements Runnable{
+public class ServerReactor implements Runnable {
     private ExecutorService pool;
     private Selector selector;
     private ServerSocketChannel serverSocketChannel;
-    BlockingQueue<Message> queue;
+    BlockingQueue<Response> queue;
 
     public ServerReactor(int port) throws Exception {
         pool = Executors.newFixedThreadPool(5);
@@ -38,35 +37,41 @@ public class ServerReactor implements Runnable{
         this.selector = selector;
     }
 
-    public BlockingQueue<Message> getQueue() {
+    public BlockingQueue<Response> getQueue() {
         return queue;
     }
 
-    public void setQueue(BlockingQueue<Message> queue) {
+    public void setQueue(BlockingQueue<Response> queue) {
         this.queue = queue;
     }
+
+    public static final long SELECTOR_TIMEOUT = 1000;
 
     @Override
     public void run() {
         System.out.println("Server listening on port " + serverSocketChannel.socket().getLocalPort());
         try {
             while (true) {
-                selector.select();
+//                System.out.println("outer while");
+                selector.select(SELECTOR_TIMEOUT);
                 Set<SelectionKey> selectionKeys = selector.selectedKeys();
                 Iterator<SelectionKey> iterator = selectionKeys.iterator();
-                while(iterator.hasNext()){
+                while (iterator.hasNext()) {
                     SelectionKey key = iterator.next();
-                    if(key.isAcceptable()){
+                    if (key.isAcceptable()) {
                         SocketChannel socketChannel = serverSocketChannel.accept();
                         System.out.println("Connection accepted");
                         socketChannel.configureBlocking(false);
-                        socketChannel.register(selector,SelectionKey.OP_READ);
+                        socketChannel.register(selector, SelectionKey.OP_READ);
                     }
-                    if(key.isWritable()){
-                        pool.submit(new WriteEventHandler(key,this));
-                    }
-                    if(key.isReadable()){
+
+                    if (key.isReadable()) {
+//                        System.out.println("Key is readable!!!!");
                         pool.submit(new ReadEventHandler(key,this));
+                    }
+                    if (key.isWritable()) {
+//                        System.out.println("Key is writable!!!!");
+                        pool.submit(new WriteEventHandler(key,this));
                     }
                 }
                 selectionKeys.clear();

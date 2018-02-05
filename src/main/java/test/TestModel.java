@@ -1,14 +1,14 @@
 package test;
 
-import model.Message;
+import model.MessageRequest;
 
 import java.nio.ByteBuffer;
 
 public class TestModel {
     public static void main(String[] args) {
-        Message message = new Message(1,"Hello");
-        byte[] seriazlied = message.serialize();
-        Message deserialized = Message.deserialize(seriazlied);
+        MessageRequest messageRequest = new MessageRequest(1,"Hello");
+        byte[] seriazlied = messageRequest.serialize();
+        MessageRequest deserialized = MessageRequest.deserialize(seriazlied);
         System.out.println("Id: "+deserialized.getId());
         System.out.println("Size: "+deserialized.getSize());
         System.out.println("Content: "+deserialized.getContent());

@@ -1,10 +1,10 @@
 package client;
 
-import model.Message;
-import model.MessageResponse;
+import model.Request;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.nio.channels.ClosedChannelException;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
@@ -14,36 +14,36 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.*;
 
-public class ClientReactor implements Runnable {
-    private BlockingQueue<Message> queue;
-    private Map<Integer, CompletableFuture<MessageResponse>> messageFutureMapper;
+public class ClientReactor<T> implements Runnable {
+    public static final int SELECTOR_TIMEOUT = 1000;
+    private BlockingQueue<Request> queue;
+    private Map<Integer, CompletableFuture<T>> responseFutureMapper;
     private ExecutorService pool;
     private String host;
     private int port;
-    private Selector selector;
 
     public ClientReactor(String hostIP, int port) {
         queue = new ArrayBlockingQueue(1024);
-        messageFutureMapper = new HashMap<>();
+        responseFutureMapper = new HashMap<>();
         this.host = hostIP;
         this.port = port;
         pool = Executors.newFixedThreadPool(5);
     }
 
-    public BlockingQueue<Message> getQueue() {
+    public BlockingQueue<Request> getQueue() {
         return queue;
     }
 
-    public void setQueue(BlockingQueue<Message> queue) {
+    public void setQueue(BlockingQueue<Request> queue) {
         this.queue = queue;
     }
 
-    public Map<Integer, CompletableFuture<MessageResponse>> getMessageFutureMapper() {
-        return messageFutureMapper;
+    public Map<Integer, CompletableFuture<T>> getResponseFutureMapper() {
+        return responseFutureMapper;
     }
 
-    public void setMessageFutureMapper(Map<Integer, CompletableFuture<MessageResponse>> messageFutureMapper) {
-        this.messageFutureMapper = messageFutureMapper;
+    public void setResponseFutureMapper(Map<Integer, CompletableFuture<T>> responseFutureMapper) {
+        this.responseFutureMapper = responseFutureMapper;
     }
 
     public String getHost() {
@@ -62,12 +62,14 @@ public class ClientReactor implements Runnable {
         this.port = port;
     }
 
-    public Selector getSelector() {
-        return selector;
-    }
-
-    public void setSelector(Selector selector) {
-        this.selector = selector;
+    public void interestNextOps(Selector selector,SocketChannel channel) throws ClosedChannelException {
+        if(!queue.isEmpty()){
+            channel.register(selector,SelectionKey.OP_WRITE);
+        } else if(!responseFutureMapper.isEmpty()){
+            channel.register(selector,SelectionKey.OP_READ);
+        } else{
+            channel.register(selector,0);
+        }
     }
 
     @Override
@@ -79,7 +81,7 @@ public class ClientReactor implements Runnable {
             socketChannel.register(selector, SelectionKey.OP_WRITE);
 
             while (true) {
-                selector.select();
+                selector.select(SELECTOR_TIMEOUT);
                 Set<SelectionKey> selectionKeys = selector.selectedKeys();
                 Iterator<SelectionKey> iterator = selectionKeys.iterator();
                 while (iterator.hasNext()) {
@@ -91,6 +93,7 @@ public class ClientReactor implements Runnable {
                         pool.submit(new WriteEventHandler(this, selectionKey));
                     }
                 }
+                interestNextOps(selector,socketChannel);
                 selectionKeys.clear();
             }
         } catch (IOException ex) {

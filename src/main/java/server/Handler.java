@@ -62,7 +62,7 @@ public class Handler implements Runnable {
         sb.append(new String(subStringBytes));
         input.clear();
         clientName = sb.toString().trim();
-        System.out.println("Message received from client: "+clientName);
+        System.out.println("MessageRequest received from client: "+clientName);
     }
 
     void write() throws Exception {

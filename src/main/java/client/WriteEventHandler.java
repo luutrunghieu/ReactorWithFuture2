@@ -1,6 +1,7 @@
 package client;
 
-import model.Message;
+import model.MessageRequest;
+import model.Request;
 
 import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
@@ -11,30 +12,26 @@ import java.util.concurrent.TimeUnit;
 public class WriteEventHandler implements Runnable {
     private ClientReactor reactor;
     private SelectionKey selectionKey;
-    public WriteEventHandler(ClientReactor reactor,SelectionKey selectionKey) {
+
+    public WriteEventHandler(ClientReactor reactor, SelectionKey selectionKey) {
         this.reactor = reactor;
         this.selectionKey = selectionKey;
     }
 
     @Override
     public void run() {
-        try{
-            BlockingQueue<Message> queue = reactor.getQueue();
-            while(!queue.isEmpty()){
-//                System.out.println("Queue size: "+queue.size());
-                Message message = queue.poll(1, TimeUnit.SECONDS);
-                ByteBuffer buffer = ByteBuffer.wrap(message.serialize());
+        try {
+            BlockingQueue<Request> queue = reactor.getQueue();
+            while (!queue.isEmpty()) {
+                Request request = queue.poll(1, TimeUnit.SECONDS);
+                ByteBuffer buffer = ByteBuffer.wrap(request.serialize());
                 SocketChannel channel = (SocketChannel) selectionKey.channel();
                 channel.configureBlocking(false);
                 channel.write(buffer);
-
-                System.out.println("Sent: "+message.getContent());
-//                System.out.println("Size: "+message.getSize());
-//                Thread.sleep(1000);
+                System.out.println("Sent: " + request.getId());
             }
             selectionKey.interestOps(SelectionKey.OP_READ);
-            selectionKey.selector().wakeup();
-        } catch(Exception ex){
+        } catch (Exception ex) {
             ex.printStackTrace();
         }
 
