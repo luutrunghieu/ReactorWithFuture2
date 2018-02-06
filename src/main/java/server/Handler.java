@@ -34,7 +34,7 @@ public class Handler implements Runnable {
                 write();
             }
         } catch (Exception ex) {
-
+            ex.printStackTrace();
         }
     }
 

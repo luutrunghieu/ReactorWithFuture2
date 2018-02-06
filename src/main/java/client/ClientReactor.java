@@ -93,7 +93,7 @@ public class ClientReactor<T> implements Runnable {
                         pool.submit(new WriteEventHandler(this, selectionKey));
                     }
                 }
-                interestNextOps(selector,socketChannel);
+//                interestNextOps(selector,socketChannel);
                 selectionKeys.clear();
             }
         } catch (IOException ex) {

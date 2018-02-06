@@ -10,11 +10,11 @@ import java.util.concurrent.CompletableFuture;
  * Created by imdb on 06/02/2018.
  */
 public class ProcessMessage implements Runnable {
-    private ServerReactor reactor;
+    private ServerReactorNew reactor;
     private Request request;
     private CompletableFuture completableFuture;
 
-    public ProcessMessage(ServerReactor reactor, Request request, CompletableFuture completableFuture) {
+    public ProcessMessage(ServerReactorNew reactor, Request request, CompletableFuture completableFuture) {
         this.reactor = reactor;
         this.request = request;
         this.completableFuture = completableFuture;
