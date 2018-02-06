@@ -1,8 +1,5 @@
 package server_new;
 
-import model.MessageRequest;
-import model.MessageResponse;
-import model.Request;
 import model.Response;
 
 import java.nio.ByteBuffer;
@@ -22,7 +19,7 @@ public class WriteEventHandler implements Runnable{
     @Override
     public void run() {
         try {
-            BlockingQueue<Response> queue = reactor.getQueue();
+            BlockingQueue<Response> queue = reactor.getWritePendingQueue();
             if (!queue.isEmpty()) {
                 while (!queue.isEmpty()) {
                     Response response = queue.take();
@@ -30,7 +27,7 @@ public class WriteEventHandler implements Runnable{
                     SocketChannel channel = (SocketChannel) selectionKey.channel();
                     channel.configureBlocking(false);
                     channel.write(buffer);
-                    System.out.println("Sent: " + response.getId()+" - Type: "+response.getType());
+//                    System.out.println("Sent: " + response.getId()+" - Type: "+response.getType());
                 }
             }
 //            System.out.println("Change selector to OP_READ - threads = " + Thread.activeCount());

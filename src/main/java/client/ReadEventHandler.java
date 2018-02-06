@@ -36,7 +36,7 @@ public class ReadEventHandler implements Runnable {
                         buffer.get(contentAsBytes, 0, size);
                         String content = new String(contentAsBytes);
                         MessageResponse response = new MessageResponse(id, content);
-                        System.out.println("Received : " + response.getId()+ " - Type: "+response.getType());
+//                        System.out.println("Received : " + response.getId()+ " - Type: "+response.getType());
                         CompletableFuture<MessageResponse> echoResponseFuture = (CompletableFuture<MessageResponse>) reactor.getResponseFutureMapper().get(id);
                         echoResponseFuture.complete(response);
                         break;
@@ -44,9 +44,9 @@ public class ReadEventHandler implements Runnable {
                     case 2: {
                         long result = buffer.getLong();
                         CalculationResponse response = new CalculationResponse(id, result);
-                        System.out.println("Received : " + response.getId()+" - Type: "+response.getType());
-                        CompletableFuture<CalculationResponse> echoResponseFuture = (CompletableFuture<CalculationResponse>) reactor.getResponseFutureMapper().get(id);
-                        echoResponseFuture.complete(response);
+//                        System.out.println("Received : " + response.getId()+" - Type: "+response.getType());
+                        CompletableFuture<CalculationResponse> calcalateResponseFuture = (CompletableFuture<CalculationResponse>) reactor.getResponseFutureMapper().get(id);
+                        calcalateResponseFuture.complete(response);
                         break;
                     }
                     default: {

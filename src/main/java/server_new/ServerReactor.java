@@ -1,6 +1,5 @@
 package server_new;
 
-import model.MessageRequest;
 import model.Request;
 import model.Response;
 
@@ -17,12 +16,12 @@ public class ServerReactor implements Runnable {
     private ExecutorService pool;
     private Selector selector;
     private ServerSocketChannel serverSocketChannel;
-    BlockingQueue<Response> queue;
+    private BlockingQueue<Response> writePendingQueue;
 
     public ServerReactor(int port) throws Exception {
         pool = Executors.newFixedThreadPool(5);
         selector = Selector.open();
-        queue = new ArrayBlockingQueue<>(1024);
+        writePendingQueue = new ArrayBlockingQueue<>(1024);
         serverSocketChannel = ServerSocketChannel.open();
         serverSocketChannel.socket().bind(new InetSocketAddress(port));
         serverSocketChannel.configureBlocking(false);
@@ -37,15 +36,23 @@ public class ServerReactor implements Runnable {
         this.selector = selector;
     }
 
-    public BlockingQueue<Response> getQueue() {
-        return queue;
+    public BlockingQueue<Response> getWritePendingQueue() {
+        return writePendingQueue;
     }
 
-    public void setQueue(BlockingQueue<Response> queue) {
-        this.queue = queue;
+    public void setWritePendingQueue(BlockingQueue<Response> writePendingQueue) {
+        this.writePendingQueue = writePendingQueue;
     }
 
     public static final long SELECTOR_TIMEOUT = 1000;
+
+    public ExecutorService getPool() {
+        return pool;
+    }
+
+    public void setPool(ExecutorService pool) {
+        this.pool = pool;
+    }
 
     @Override
     public void run() {

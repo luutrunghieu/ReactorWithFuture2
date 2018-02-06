@@ -28,7 +28,7 @@ public class WriteEventHandler implements Runnable {
                 SocketChannel channel = (SocketChannel) selectionKey.channel();
                 channel.configureBlocking(false);
                 channel.write(buffer);
-                System.out.println("Sent: " + request.getId());
+//                System.out.println("Sent: " + request.getId());
             }
             selectionKey.interestOps(SelectionKey.OP_READ);
         } catch (Exception ex) {
