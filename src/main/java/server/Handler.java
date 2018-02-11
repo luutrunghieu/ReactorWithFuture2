@@ -44,11 +44,6 @@ public class Handler implements Runnable {
         if (readCount > 0) {
             readProcess(readCount);
         }
-        try {
-            Thread.sleep(1000);
-        } catch (Exception ex) {
-            ex.printStackTrace();
-        }
         state = WRITING;
         selectionKey.interestOps(SelectionKey.OP_WRITE);
     }

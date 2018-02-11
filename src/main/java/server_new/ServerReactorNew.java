@@ -17,14 +17,12 @@ import java.util.concurrent.Executors;
  * Created by imdb on 06/02/2018.
  */
 public class ServerReactorNew implements Runnable {
-    private ExecutorService pool;
     private Selector selector;
     private ServerSocketChannel serverSocketChannel;
     private BlockingQueue<Response> writePendingQueue;
     public static final int SERVER_SELECTOR_TIMEOUT = 1000;
 
     public ServerReactorNew(int port) throws Exception {
-        pool = Executors.newFixedThreadPool(5);
         selector = Selector.open();
         writePendingQueue = new ArrayBlockingQueue<>(1024);
         serverSocketChannel = ServerSocketChannel.open();
@@ -52,14 +50,6 @@ public class ServerReactorNew implements Runnable {
 
     public static final long SELECTOR_TIMEOUT = 1000;
 
-    public ExecutorService getPool() {
-        return pool;
-    }
-
-    public void setPool(ExecutorService pool) {
-        this.pool = pool;
-    }
-
     @Override
     public void run() {
         System.out.println("Server listening on port " + serverSocketChannel.socket().getLocalPort());
@@ -73,7 +63,6 @@ public class ServerReactorNew implements Runnable {
                     SelectionKey key = iterator.next();
                     dispatch(key);
                 }
-//                interestNextOps(selector,socketChannel);
                 selectionKeys.clear();
             }
         } catch (Exception e) {
@@ -82,17 +71,14 @@ public class ServerReactorNew implements Runnable {
     }
 
     void dispatch(SelectionKey key) {
+//        System.out.println("-----------------");
+//        System.out.println("Readable: " +key.isReadable());
+//        System.out.println("Writable: " +key.isWritable());
+//        System.out.println("Acceptable: " +key.isAcceptable());
+//        System.out.println("Connectable: "+key.isConnectable());
         Runnable r = (Runnable) key.attachment();
         if (r != null) {
             r.run();
-        }
-    }
-
-    public void interestNextOps(Selector selector, SocketChannel channel) throws ClosedChannelException {
-        if (!writePendingQueue.isEmpty()) {
-            channel.register(selector, SelectionKey.OP_WRITE);
-        } else{
-            channel.register(selector, SelectionKey.OP_READ);
         }
     }
 
@@ -107,7 +93,7 @@ public class ServerReactorNew implements Runnable {
             try {
                 SocketChannel socketChannel = serverSocketChannel.accept();
                 if (socketChannel != null) {
-                    pool.execute((new Handler(selector, socketChannel, reactor)));
+                    new Handler(selector, socketChannel, reactor);
                 }
                 System.out.println("Connection accepted");
             } catch (Exception e) {

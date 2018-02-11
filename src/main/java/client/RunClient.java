@@ -15,7 +15,7 @@ public class RunClient {
         new Thread(reactor).start();
         ConcreteClient client = new ConcreteClient(reactor);
         for(int i = 0; i< NUM_REQUEST_ECHO;i++){
-            MessageRequest messageRequest = new MessageRequest(i,i+"");
+            MessageRequest messageRequest = new MessageRequest(i,i+"aaaa");
             CompletableFuture<MessageResponse> echoResponseFuture = client.echo(messageRequest);
             echoResponseFuture.thenAcceptAsync((response)->{
                 System.out.println("Complete "+response.getId()+" - Type: "+response.getType());
