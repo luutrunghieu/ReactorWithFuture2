@@ -1,4 +1,4 @@
-package client;
+package client_new;
 
 import model.*;
 
@@ -6,15 +6,16 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
 public class ConcreteClient {
-    ClientReactor reactor;
+    ClientReactorNew reactor;
 
-    public ConcreteClient(ClientReactor reactor) {
+    public ConcreteClient(ClientReactorNew reactor) {
         this.reactor = reactor;
     }
 
     CompletableFuture<MessageResponse> echo(MessageRequest messageRequest){
         CompletableFuture<MessageResponse> echoResponseFuture = new CompletableFuture<>();
         reactor.getResponseFutureMapper().put(messageRequest.getId(),echoResponseFuture);
+//        System.out.println(messageRequest.getId());
         try {
             reactor.getQueue().offer(messageRequest,1, TimeUnit.SECONDS);
         } catch (InterruptedException e) {

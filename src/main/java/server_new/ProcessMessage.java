@@ -10,12 +10,12 @@ import java.util.concurrent.CompletableFuture;
  * Created by imdb on 06/02/2018.
  */
 public class ProcessMessage implements Runnable {
-    private ServerReactorNew reactor;
+    private Handler handler;
     private Request request;
     private CompletableFuture completableFuture;
 
-    public ProcessMessage(ServerReactorNew reactor, Request request, CompletableFuture completableFuture) {
-        this.reactor = reactor;
+    public ProcessMessage(Handler handler, Request request, CompletableFuture completableFuture) {
+        this.handler = handler;
         this.request = request;
         this.completableFuture = completableFuture;
     }
@@ -23,6 +23,7 @@ public class ProcessMessage implements Runnable {
     @Override
     public void run() {
         try {
+//            System.out.println("Run process message");
             int type = request.getType();
             Response response = null;
             switch (type) {
@@ -38,7 +39,7 @@ public class ProcessMessage implements Runnable {
                     break;
                 }
             }
-            reactor.getWritePendingQueue().put(response);
+            handler.getWritePendingQueue().put(response);
             completableFuture.complete(response);
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -47,7 +48,7 @@ public class ProcessMessage implements Runnable {
     }
 
     public Response processEchoMessage() throws Exception {
-        Thread.sleep(new SecureRandom().nextInt(1000));
+//        Thread.sleep(new SecureRandom().nextInt(1000));
         MessageRequest messageRequest = (MessageRequest) request;
         MessageResponse messageResponse = new MessageResponse(messageRequest.getId(), messageRequest.getContent());
 //        System.out.println("MessageResponse: " + messageResponse.getId());
@@ -55,7 +56,7 @@ public class ProcessMessage implements Runnable {
     }
 
     public Response processCalculateMessage() throws Exception {
-        Thread.sleep(new SecureRandom().nextInt(1000));
+//        Thread.sleep(new SecureRandom().nextInt(1000));
         CalculationRequest calculationRequest = (CalculationRequest) request;
         CalculationResponse calculationResponse = new CalculationResponse(calculationRequest.getId(), calculationRequest.getNum1() + calculationRequest.getNum2());
 //        System.out.println("CalculationResponse: " + calculationRequest.getId());

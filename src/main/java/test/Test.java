@@ -1,17 +1,16 @@
 package test;
 
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
 public class Test {
     public static void main(String[] args) {
-        for (int i = 0; i < 5; i++) {
-            System.out.println("New Loop");
-            if (i < 3) {
-                if (i < 1) {
-                    System.out.println(i);
-                } else {
-                    continue;
-                }
-                System.out.println("<3 >1");
-            }
+        ExecutorService es = Executors.newFixedThreadPool(2);
+        for(int i = 0 ;i <3 ;i++){
+            es.execute(new LongTimeCalculate());
+        }
+        for(int i = 0 ; i < 5;i++){
+            es.execute(new ShortTimeCalculate());
         }
     }
 }

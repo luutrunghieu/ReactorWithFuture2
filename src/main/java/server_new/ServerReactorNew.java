@@ -1,6 +1,7 @@
 package server_new;
 
 import model.Response;
+import monitor.MonitorThread;
 import server.Reactor;
 import server_new.Handler;
 
@@ -17,19 +18,19 @@ import java.util.concurrent.Executors;
  * Created by imdb on 06/02/2018.
  */
 public class ServerReactorNew implements Runnable {
+    private MonitorThread monitorThread;
     private Selector selector;
     private ServerSocketChannel serverSocketChannel;
-    private BlockingQueue<Response> writePendingQueue;
     public static final int SERVER_SELECTOR_TIMEOUT = 1000;
 
     public ServerReactorNew(int port) throws Exception {
         selector = Selector.open();
-        writePendingQueue = new ArrayBlockingQueue<>(1024);
         serverSocketChannel = ServerSocketChannel.open();
         serverSocketChannel.socket().bind(new InetSocketAddress(port));
         serverSocketChannel.configureBlocking(false);
         SelectionKey selectionKey = serverSocketChannel.register(selector, SelectionKey.OP_ACCEPT);
         selectionKey.attach(new Acceptor(this));
+        monitorThread = new MonitorThread();
     }
 
     public Selector getSelector() {
@@ -40,22 +41,15 @@ public class ServerReactorNew implements Runnable {
         this.selector = selector;
     }
 
-    public BlockingQueue<Response> getWritePendingQueue() {
-        return writePendingQueue;
-    }
-
-    public void setWritePendingQueue(BlockingQueue<Response> writePendingQueue) {
-        this.writePendingQueue = writePendingQueue;
-    }
-
     public static final long SELECTOR_TIMEOUT = 1000;
 
     @Override
     public void run() {
+        new Thread(monitorThread).start();
         System.out.println("Server listening on port " + serverSocketChannel.socket().getLocalPort());
         try {
             while (true) {
-                selector.select(SERVER_SELECTOR_TIMEOUT);
+                selector.select();
                 Set<SelectionKey> selectionKeys = selector.selectedKeys();
 //                System.out.println("Size key set: "+selectionKeys.size());
                 Iterator<SelectionKey> iterator = selectionKeys.iterator();
@@ -93,7 +87,7 @@ public class ServerReactorNew implements Runnable {
             try {
                 SocketChannel socketChannel = serverSocketChannel.accept();
                 if (socketChannel != null) {
-                    new Handler(selector, socketChannel, reactor);
+                    new Handler(monitorThread, selector, socketChannel, reactor);
                 }
                 System.out.println("Connection accepted");
             } catch (Exception e) {

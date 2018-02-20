@@ -5,35 +5,45 @@ import model.CalculationRequest;
 import model.MessageRequest;
 import model.Request;
 import model.Response;
+import monitor.MonitorThread;
 
 import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.*;
 
 /**
  * Created by imdb on 06/02/2018.
  */
 public class Handler implements Runnable {
-    static ExecutorService pool = Executors.newFixedThreadPool(2);
+    static ExecutorService pool = Executors.newFixedThreadPool(10);
     ServerReactorNew reactor;
     final SocketChannel socketChannel;
     final SelectionKey selectionKey;
     ByteBuffer buffer = ByteBuffer.allocate(1024);
-    static final int READING = 0, WRITING = 1, PROCESSING = 2, WAITING = 3;
+    static final int READING = 0, WRITING = 1;
     int state = READING;
-
-    Handler(Selector selector, SocketChannel socketChannel, ServerReactorNew reactor) throws Exception {
+    boolean reading = false;
+    private BlockingQueue<Response> writePendingQueue;
+    private MonitorThread monitorThread;
+    Handler(MonitorThread monitorThread,Selector selector, SocketChannel socketChannel, ServerReactorNew reactor) throws Exception {
+        this.monitorThread = monitorThread;
         this.reactor = reactor;
         this.socketChannel = socketChannel;
         socketChannel.configureBlocking(false);
         selectionKey = socketChannel.register(selector, SelectionKey.OP_READ);
         selectionKey.attach(this);
         selector.wakeup();
+        writePendingQueue = new ArrayBlockingQueue<>(1024);
+    }
+
+    public BlockingQueue<Response> getWritePendingQueue() {
+        return writePendingQueue;
+    }
+
+    public void setWritePendingQueue(BlockingQueue<Response> writePendingQueue) {
+        this.writePendingQueue = writePendingQueue;
     }
 
     @Override
@@ -51,18 +61,24 @@ public class Handler implements Runnable {
 
     void read() {
         try {
-            state = PROCESSING;
-            BlockingQueue<Response> queue = reactor.getWritePendingQueue();
+            reading = true;
+            selectionKey.interestOps(0);
             while (true) {
                 Request request = null;
                 CompletableFuture completableFuture = new CompletableFuture();
                 buffer.limit(12);
                 int readCount = socketChannel.read(buffer);
                 if (readCount == 0) {
-                    if (!queue.isEmpty()) {
-                        state = WAITING;
+//                    System.out.println("Read count = 0");
+                    reading = false;
+                    if (!writePendingQueue.isEmpty()) {
+//                        System.out.println("read - Change to write");
+                        state = WRITING;
+                        selectionKey.interestOps(SelectionKey.OP_WRITE);
                     } else {
+//                        System.out.println("read - Change to read");
                         state = READING;
+                        selectionKey.interestOps(SelectionKey.OP_READ);
                     }
                     break;
                 }
@@ -71,9 +87,6 @@ public class Handler implements Runnable {
                 int type = buffer.getInt();
                 int id = buffer.getInt();
                 int size = buffer.getInt();
-                System.out.println("Type: " + type);
-                System.out.println("ID: " + id);
-                System.out.println("Size: " + size);
                 buffer.limit(12 + size);
                 socketChannel.read(buffer);
                 buffer.position(12);
@@ -82,14 +95,15 @@ public class Handler implements Runnable {
                         byte[] contentAsBytes = new byte[size];
                         buffer.get(contentAsBytes, 0, size);
                         String content = new String(contentAsBytes);
-                        System.out.println("Content: " + content);
                         request = new MessageRequest(id, content);
+                        monitorThread.getReceiveCount().incrementAndGet();
                         break;
                     }
                     case RPC.CALCULATE: {
                         long num1 = buffer.getLong();
                         long num2 = buffer.getLong();
                         request = new CalculationRequest(id, num1, num2);
+                        monitorThread.getReceiveCount().incrementAndGet();
                         break;
                     }
                     default: {
@@ -97,19 +111,20 @@ public class Handler implements Runnable {
                     }
                 }
                 buffer.clear();
-                System.out.println("Received message: " + request.getId());
-                pool.execute(new ProcessMessage(reactor, request, completableFuture));
+//                System.out.println("Received message: " + request.getId());
+                pool.execute(new ProcessMessage(this, request, completableFuture));
                 completableFuture.thenAcceptAsync((mess) -> {
-                    if (state == WAITING || state == READING) {
+                    if (!reading) {
+//                        System.out.println("completeFuture - Change to write");
                         state = WRITING;
                         selectionKey.interestOps(SelectionKey.OP_WRITE);
-                        System.out.println("Chuyen sang write");
+                        selectionKey.selector().wakeup();
                     }
                 });
             }
         } catch (Exception ex) {
             System.out.println("State when throwing exception: " + state);
-            System.out.println("Queue size: " + reactor.getWritePendingQueue().size());
+            System.out.println("Queue size: " + writePendingQueue.size());
             ex.printStackTrace();
             System.exit(1);
         }
@@ -117,18 +132,20 @@ public class Handler implements Runnable {
 
     void write() {
         try {
-            BlockingQueue<Response> queue = reactor.getWritePendingQueue();
-            if (!queue.isEmpty()) {
-                while (!queue.isEmpty()) {
-                    Response response = queue.take();
+//            System.out.println("WRITING");
+            if (!writePendingQueue.isEmpty()) {
+                while (!writePendingQueue.isEmpty()) {
+                    Response response = writePendingQueue.take();
                     ByteBuffer buffer = ByteBuffer.wrap(response.serialize());
                     SocketChannel channel = (SocketChannel) selectionKey.channel();
                     channel.configureBlocking(false);
                     channel.write(buffer);
-                    System.out.println("Sent: " + response.getId() + " - Type: " + response.getType());
+                    monitorThread.getSendCount().incrementAndGet();
+//                    System.out.println("Sent: " + response.getId() + " - Type: " + response.getType());
                 }
             }
 //            System.out.println("Change selector to OP_READ - threads = " + Thread.activeCount());
+//            System.out.println("write - change to read");
             state = READING;
             selectionKey.interestOps(SelectionKey.OP_READ);
         } catch (Exception ex) {
